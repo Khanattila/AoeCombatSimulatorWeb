@@ -38,7 +38,7 @@ export class Missile extends Projectile
 		let maxYGridIndex: number = Math.min(Battle.GRID_LENGTH - 1, gy + 1);
 		let targetArmyIndex: number = this.attacker.armyIndex == 1 ? 0 : 1;
 		let collisionTargets: Unit[] = [];
-		let bonusAoe: number = this.attacker.civUnitType.civ == AoeData.civ_ethiopians && this.attacker.civUnitType.age == 4 ? 0.2 : 0.1;
+		let bonusAoe: number = this.attacker.civUnitType.civ == AoeData.civ_ethiopians && this.attacker.civUnitType.age == 4 ? 0.2 : (AoeData.utl_chakramThrower.unitTypes.includes(this.attacker.civUnitType.baseUnitType) ? 0.0 : 0.1);
 
 		for (let i: number = minXGridIndex; i <= maxXGridIndex; i++)
 		{
@@ -53,9 +53,24 @@ export class Missile extends Projectile
 		}
 
 		collisionTargets.forEach(unit => {
-			let damageDealt: number = Unit.CalculateDamageDealtToTarget(this.attacker, unit, this.secondary) * (unit == this.target ? 1.0 : 0.5);
+			let damageDealt: number = Unit.CalculateDamageDealtToTarget(this.attacker, unit, this.secondary) * (unit == this.target ? 1.0 : this.attacker.sideTargetDmgFraction);
+
+			// Shrivamsha Riders can block/dodge projectiles
+			if (AoeData.utl_shrivamshaRider.unitTypes.includes(unit.civUnitType.baseUnitType)){
+				if (unit.civUnitType.baseUnitType == AoeData.ut_shrivamshaRider && unit.curEnergy >= 20.0){
+					damageDealt = 0.0;
+					unit.curEnergy -= 20.0;
+				} else if (unit.civUnitType.baseUnitType == AoeData.ut_eliteShrivamshaRider && unit.curEnergy >= 14.4){
+					damageDealt = 0.0;
+					unit.curEnergy -= 14.4;
+				}
+			}
+
 			unit.curHp -= damageDealt;
 			this.alreadyAffectedUnits.add(unit);
+			if (this.alreadyAffectedUnits.size >= 5){
+				this.arrived = true;
+			}
 		});
 
 		if (this.flightDurationPassed >= this.flightDurationMax)

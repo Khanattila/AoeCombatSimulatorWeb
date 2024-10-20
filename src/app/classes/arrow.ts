@@ -25,6 +25,18 @@ export class Arrow extends Projectile
 		if (this.target.alive && (this.certainHit || (hitRoll < (this.secondary ? this.attacker.secondaryAttackAccuracyPercent : this.attacker.accuracyPercent))))
 		{
 			let damageDealt : number = Unit.CalculateDamageDealtToTarget(this.attacker, this.target, this.secondary);
+
+			// Shrivamsha Riders can block/dodge projectiles
+			if (AoeData.utl_shrivamshaRider.unitTypes.includes(this.target.civUnitType.baseUnitType)){
+				if (this.target.civUnitType.baseUnitType == AoeData.ut_shrivamshaRider && this.target.curEnergy >= 20.0){
+					damageDealt = 0.0;
+					this.target.curEnergy -= 20.0;
+				} else if (this.target.civUnitType.baseUnitType == AoeData.ut_eliteShrivamshaRider && this.target.curEnergy >= 14.4){
+					damageDealt = 0.0;
+					this.target.curEnergy -= 14.4;
+				}
+			}
+
 			this.target.curHp -= damageDealt;
 			this.battle.players[this.attacker.armyIndex].goodRoll_MainTargetHit++; // debug purposes
 		}
@@ -43,7 +55,7 @@ export class Arrow extends Projectile
 			let closestUnitDistSq: number = Number.MAX_VALUE;
 			targetArmy.forEach(possibleTarget => {
 				let distToArrowSq: number = (impactX - possibleTarget.x) * (impactX - possibleTarget.x) + (impactY - possibleTarget.y) * (impactY - possibleTarget.y);
-				let possibleTargetRadiusSq: number = (possibleTarget.radius + 0.2) * (possibleTarget.radius + 0.2); // increased the size of the units' hitboxes a bit since the chance for side target hits was too low
+				let possibleTargetRadiusSq: number = (possibleTarget.radius + 0.15) * (possibleTarget.radius + 0.15); // increased the size of the units' hitboxes a bit since the chance for side target hits was too low
 				if (distToArrowSq < possibleTargetRadiusSq && distToArrowSq < closestUnitDistSq)
 				{
 					closestUnit = possibleTarget;
@@ -55,7 +67,20 @@ export class Arrow extends Projectile
 				// targets other than the main target only receive half of the normal damage
 				if (closestUnit == this.target){
 					this.battle.players[this.attacker.armyIndex].missedRoll_MainTargetHit++; // debug purposes
-					closestUnit.curHp -= Unit.CalculateDamageDealtToTarget(this.attacker, closestUnit, this.secondary);
+					let damageDealt: number = Unit.CalculateDamageDealtToTarget(this.attacker, closestUnit, this.secondary)
+					
+					// Shrivamsha Riders can block/dodge projectiles
+					if (AoeData.utl_shrivamshaRider.unitTypes.includes(closestUnit.civUnitType.baseUnitType)){
+						if (closestUnit.civUnitType.baseUnitType == AoeData.ut_shrivamshaRider && closestUnit.curEnergy >= 20.0){
+							damageDealt = 0.0;
+							closestUnit.curEnergy -= 20.0;
+						} else if (closestUnit.civUnitType.baseUnitType == AoeData.ut_eliteShrivamshaRider && closestUnit.curEnergy >= 14.4){
+							damageDealt = 0.0;
+							closestUnit.curEnergy -= 14.4;
+						}
+					}
+
+					closestUnit.curHp -= damageDealt;
 				} else{
 					if (this.target.alive){
 						this.battle.players[this.attacker.armyIndex].missedRoll_mainTargetAlive_SideTargetHit++; // debug purposes
@@ -68,18 +93,20 @@ export class Arrow extends Projectile
 						
 					}
 					
-					if (this.attacker.civUnitType.baseUnitType == AoeData.ut_arambai || this.attacker.civUnitType.baseUnitType == AoeData.ut_eliteArambai){ // Arambai and Elite Arambai always hit for 100% damage
-						closestUnit.curHp -= Unit.CalculateDamageDealtToTarget(this.attacker, closestUnit, this.secondary);
-					}else if (this.attacker.civUnitType.baseUnitType == AoeData.ut_organGun || this.attacker.civUnitType.baseUnitType == AoeData.ut_eliteOrganGun){ // (Elite) Organ Guns' secondary projectiles always hit for 100% damage
-						if (this.secondary){
-							closestUnit.curHp -= Unit.CalculateDamageDealtToTarget(this.attacker, closestUnit, this.secondary);
-						}else{
-							closestUnit.curHp -= 0.5 * Unit.CalculateDamageDealtToTarget(this.attacker, closestUnit, this.secondary);
+					let damageDealt: number = this.attacker.sideTargetDmgFraction * Unit.CalculateDamageDealtToTarget(this.attacker, closestUnit, this.secondary);
+
+					// Shrivamsha Riders can block/dodge projectiles
+					if (AoeData.utl_shrivamshaRider.unitTypes.includes(closestUnit.civUnitType.baseUnitType)){
+						if (closestUnit.civUnitType.baseUnitType == AoeData.ut_shrivamshaRider && closestUnit.curEnergy >= 20.0){
+							damageDealt = 0.0;
+							closestUnit.curEnergy -= 20.0;
+						} else if (closestUnit.civUnitType.baseUnitType == AoeData.ut_eliteShrivamshaRider && closestUnit.curEnergy >= 14.4){
+							damageDealt = 0.0;
+							closestUnit.curEnergy -= 14.4;
 						}
-					} else{
-						closestUnit.curHp -= 0.5 * Unit.CalculateDamageDealtToTarget(this.attacker, closestUnit, this.secondary);
 					}
-					
+
+					closestUnit.curHp -= damageDealt;
 				}
 			}
 			else{
